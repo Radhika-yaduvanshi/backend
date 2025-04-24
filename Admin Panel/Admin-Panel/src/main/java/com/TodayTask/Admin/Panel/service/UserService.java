@@ -19,11 +19,18 @@ public interface UserService {
     public Long getUserIdByName(String name);
 
     public String deleteUser(Long id);
-    public String updateUser(UserProxy userProxy,MultipartFile image,Long id);
+    public String updateUser(UserProxy userProxy,Long id);
 
     public byte[] getProfileImage(String imageName) throws IOException;
     public void generateFakeUsers(int count);
     public List<UserEntity> searchUsers(String keyword);
+    public boolean validateToken(String token);
+    public void generateResetToken(String email);
+    public void resetPassword(String token, String newPassword);
+
+    public List<UserProxy> getAllUser();
+
+
 
 
 }

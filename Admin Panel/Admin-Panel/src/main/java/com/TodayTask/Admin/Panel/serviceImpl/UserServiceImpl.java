@@ -12,6 +12,7 @@ import com.TodayTask.Admin.Panel.service.UserService;
 import com.TodayTask.Admin.Panel.util.Helper;
 import com.github.javafaker.Faker;
 import jakarta.mail.internet.MimeMessage;
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -89,8 +90,8 @@ public class UserServiceImpl implements UserService {
             UserEntity user=userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("user not found"));
             System.out.println("USer form email is : "+user);
 
-            user.setOtp(otp);
-            user.setOtpRequestedTime(LocalDateTime.now());
+//            user.setOtp(otp);
+//            user.setOtpRequestedTime(LocalDateTime.now());
             userRepo.save(user);
             System.out.println("USer after save : "+user);
 
@@ -106,24 +107,25 @@ public class UserServiceImpl implements UserService {
     //varify OTP
 
     public boolean verifyOtp(String email, String otp) {
-        UserEntity user = userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("user not found"));
-        if (user == null) {
-            throw new RuntimeException("User not found");
-        }
-
-        if (user.getOtp() == null) {
-            throw new RuntimeException("OTP not generated yet");
-        }
-
-        if (user.getOtp().equals(otp)) {
-            // Optional: You can check for expiry here if you want
-            user.setOtp(null);
-            user.setOtpRequestedTime(null);
-            userRepo.save(user);
-            return true;
-        } else {
-            return false;
-        }
+//        UserEntity user = userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("user not found"));
+//        if (user == null) {
+//            throw new RuntimeException("User not found");
+//        }
+//
+//        if (user.getOtp() == null) {
+//            throw new RuntimeException("OTP not generated yet");
+//        }
+//
+//        if (user.getOtp().equals(otp)) {
+//            // Optional: You can check for expiry here if you want
+//            user.setOtp(null);
+//            user.setOtpRequestedTime(null);
+//            userRepo.save(user);
+//            return true;
+//        } else {
+//            return false;
+//        }
+        return false;
     }
 
 
@@ -267,7 +269,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String updateUser(UserProxy userProxy,MultipartFile image,Long id) {
+    public String updateUser(UserProxy userProxy,Long id) {
         Optional<UserEntity> user = userRepo.findById(id);
         if(user.isPresent()){
             UserEntity existingUser= user.get();
@@ -281,10 +283,10 @@ public class UserServiceImpl implements UserService {
             existingUser.setContactNumber(userProxy.getContactNumber());
             existingUser.setPincode(userProxy.getPincode());
             existingUser.setAccessRole(userProxy.getAccessRole());
-            if (image != null && !image.isEmpty()) {
-                String imageUrl = saveImage(image);
-                existingUser.setProfileImage(imageUrl);
-            }
+//            if (image != null && !image.isEmpty()) {
+//                String imageUrl = saveImage(image);
+//                existingUser.setProfileImage(imageUrl);
+//            }
 
 
             // Save the updated user entity in the repository
@@ -315,6 +317,7 @@ public class UserServiceImpl implements UserService {
 
             fakeuser.setName(faker.name().fullName());
             fakeuser.setUserName(faker.name().username());
+            fakeuser.setEmail(faker.internet().emailAddress());
             fakeuser.setPassword(passwordEncoder.encode("password123")); // default password
             fakeuser.setDob(faker.date().birthday()); // you can randomize this too
             fakeuser.setGender(genders[new Random().nextInt(genders.length)]);            fakeuser.setAddress(faker.address().fullAddress());
@@ -326,5 +329,46 @@ public class UserServiceImpl implements UserService {
             userRepo.save(fakeuser);
         }
     }
+
+
+
+    @Override
+    public void generateResetToken(String email) {
+        System.err.println(email);
+        UserEntity user = userRepo.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+        String token = UUID.randomUUID().toString();
+        user.setResetToken(token);
+        user.setTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        userRepo.save(user);
+        System.out.println("http://localhost:4200/reset-password?token=" + token);
+    }
+    @Override
+    public boolean validateToken(String token) {
+        UserEntity user = userRepo.findByResetToken(token).orElse(null);
+        return user != null && user.getTokenExpiry().isAfter(LocalDateTime.now());
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        UserEntity user = userRepo.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
+
+        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token expired");
+        }
+
+//        emp.setPassword(newPassword); // Use encoder in real apps
+        user.setResetToken(null);
+        user.setTokenExpiry(null);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepo.save(user);
+    }
+
+    @Override
+    public List<UserProxy> getAllUser() {
+        List<UserEntity> allusers = userRepo.findAll();
+     return    helper.convertList(allusers,UserProxy.class);
+    }
+
 
 }

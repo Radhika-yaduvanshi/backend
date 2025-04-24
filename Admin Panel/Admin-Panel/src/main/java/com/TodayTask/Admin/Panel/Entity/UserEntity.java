@@ -24,6 +24,7 @@ public class UserEntity {
     private String name;
     private Date dob;
     private String userName;
+    private String email;
     @Enumerated(EnumType.STRING)
     private Gender gender;
     private String address;
@@ -34,9 +35,12 @@ public class UserEntity {
     @Enumerated(EnumType.STRING)
     private Role accessRole;
     private String password;
-    @Column(name = "otp")
-    private String otp;
+    private String resetToken;
+    private LocalDateTime tokenExpiry;
 
-    @Column(name = "otp_requested_time")
-    private LocalDateTime otpRequestedTime;
+//    @Column(name = "otp")
+//    private String otp;
+//
+//    @Column(name = "otp_requested_time")
+//    private LocalDateTime otpRequestedTime;
 }

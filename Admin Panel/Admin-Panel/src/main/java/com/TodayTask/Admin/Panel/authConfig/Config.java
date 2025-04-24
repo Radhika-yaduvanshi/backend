@@ -11,6 +11,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -44,9 +45,10 @@ public class Config
 		http.csrf(csrf->csrf.disable());
 //		http.authorizeHttpRequests(auth->auth.requestMatchers("/","/user/saveUser","/user/generate","/extractAll/**","/dateEx/**","/user/loginReq","/user/register",
 //				"/generateOTP").permitAll().
-		http.authorizeHttpRequests(auth->auth.requestMatchers("/user/generate","/user/loginReq","/user/register","/user/update").permitAll().
+		http.authorizeHttpRequests(auth->auth.requestMatchers("/user/generate","/user/loginReq","/user/register","/user/update","update/**","/user/forgot-password/**","/user/reset-password/**","/user/validate-token/**","/user/reset-password/**","/user/getalluser").permitAll().
 				anyRequest().authenticated());
 		http.httpBasic(Customizer.withDefaults());
+//		http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 		http.exceptionHandling(auth->auth.authenticationEntryPoint(jwtEntryPoint));
 		http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();

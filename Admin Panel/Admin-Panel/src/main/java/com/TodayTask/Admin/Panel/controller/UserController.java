@@ -3,6 +3,7 @@ package com.TodayTask.Admin.Panel.controller;
 import com.TodayTask.Admin.Panel.Entity.LoginRequest;
 import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
+import com.TodayTask.Admin.Panel.proxy.ResetPasswordRequest;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
 import com.TodayTask.Admin.Panel.service.UserService;
@@ -11,7 +12,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -20,6 +25,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 
 import org.springframework.core.io.FileSystemResource;
@@ -31,6 +38,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/user")
@@ -42,7 +51,8 @@ public class UserController {
     @Autowired
     private UserRepo userRepo;
 
-
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
 
     //email
     // 1. Send OTP to Email
@@ -112,9 +122,17 @@ public class UserController {
     }
 
 
-    @GetMapping("/getAllUsers")
-    public List<UserProxy> getallusers(){
-        return userService.getAllUsers();
+//    @GetMapping("/getAllUsers")
+//    public List<UserProxy> getallusers(){
+//
+////        Sort sort = ascending ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+////        Pageable pageable = PageRequest.of(page, size, sort);
+//        return userService.getAllUsers();
+//    }
+
+    @GetMapping("/getalluser")
+    public List<UserProxy> allusers(){
+        return userService.getAllUser();
     }
 
 
@@ -138,17 +156,16 @@ public class UserController {
 
 
 
-    @PutMapping("/update")
-    public String updateUser(@RequestParam("user") String userJson,
-                             @RequestParam("image") MultipartFile image,
-                             @RequestParam("id") Long id) {
+    @PutMapping("/update/{id}")
+    public String updateUser(@RequestBody UserProxy userProxy,
+                             @PathVariable("id") Long id) {
         try {
             System.out.println("INside update controller ===========================================================================================================");
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd")); // Optional if using date fields
-            UserProxy userProxy = mapper.readValue(userJson, UserProxy.class); // Manually convert JSON string to UserProxy
+//            ObjectMapper mapper = new ObjectMapper();
+//            mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd")); // Optional if using date fields
+//            UserProxy userProxy = mapper.readValue(userJson, UserProxy.class); // Manually convert JSON string to UserProxy
 
-            return userService.updateUser(userProxy,image,id); // Call the service method to update user
+            return userService.updateUser(userProxy,id); // Call the service method to update user
         } catch (Exception e) {
             e.printStackTrace();
             return "Error while parsing user data: " + e.getMessage();
@@ -161,5 +178,31 @@ public class UserController {
                 .contentType(MediaType.valueOf("image/webp"))
                 .body(userService.getProfileImage(imageName));
     }
+
+    @PostMapping("/forgot-password/{payload}")
+    public ResponseEntity<?> forgotPassword(@PathVariable String payload) {
+        System.err.println("controller");
+        System.err.println(payload);
+        userService.generateResetToken(payload);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Reset link sent");
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/validate-token/{token}")
+    public ResponseEntity<?> validateToken(@PathVariable String token) {
+        boolean valid = userService.validateToken(token);
+        return ResponseEntity.ok(valid);
+    }
+
+    @PostMapping("/reset-password/{token}")
+    public ResponseEntity<?> resetPassword(@PathVariable String token, @RequestBody ResetPasswordRequest password) {
+        System.err.println(password.getPassword());
+        userService.resetPassword(token, password.getPassword());
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Password reset successful");
+        return ResponseEntity.ok(response);
+    }
+
 
 }
