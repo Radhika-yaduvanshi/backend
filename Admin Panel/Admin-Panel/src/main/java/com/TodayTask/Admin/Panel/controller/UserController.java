@@ -6,6 +6,7 @@ import com.TodayTask.Admin.Panel.Entity.UserEntity;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
 import com.TodayTask.Admin.Panel.service.UserService;
+import com.TodayTask.Admin.Panel.serviceImpl.UserServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,10 +37,44 @@ import java.nio.file.Paths;
 public class UserController {
 
     @Autowired
-    private UserService userService;
+    private UserServiceImpl userService;
 
     @Autowired
     private UserRepo userRepo;
+
+
+
+    //email
+    // 1. Send OTP to Email
+    @PostMapping("/send-otp")
+    public ResponseEntity<String> sendOtp(@RequestParam String email) {
+        String otp = userService.generateAndSendOtp(email);
+        return ResponseEntity.ok("OTP sent successfully to your email.");
+    }
+
+    // 2. Verify OTP
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@RequestParam String email, @RequestParam String otp) {
+        boolean isVerified = userService.verifyOtp(email, otp);
+        if (isVerified) {
+            return ResponseEntity.ok("OTP verified successfully.");
+        } else {
+            return ResponseEntity.badRequest().body("Invalid or expired OTP.");
+        }
+    }
+
+
+    @GetMapping("/search")
+    public List<UserEntity> searchUsers(@RequestParam("keyword") String keyword) {
+        return userService.searchUsers(keyword);
+    }
+
+
+    @PostMapping("/generate/{count}")
+    public String generateUsers(@PathVariable int count) {
+        userService.generateFakeUsers(count);
+        return count + " fake users generated successfully!";
+    }
 
     @GetMapping("/find/{name}")
     public String findbyusername(String name){

@@ -4,12 +4,18 @@ import com.TodayTask.Admin.Panel.Entity.LoginRequest;
 import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
 import com.TodayTask.Admin.Panel.authConfig.JwtService;
+import com.TodayTask.Admin.Panel.enums.Gender;
+import com.TodayTask.Admin.Panel.enums.Role;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
 import com.TodayTask.Admin.Panel.service.UserService;
 import com.TodayTask.Admin.Panel.util.Helper;
+import com.github.javafaker.Faker;
+import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,8 +29,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -44,6 +52,85 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private JwtService jwtService;
 
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    private void sendOtpEmail(String email,String otp){
+        try{
+            MimeMessage mimeMailMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper= new MimeMessageHelper(mimeMailMessage,"utf-8");
+
+            String subject= "Password Reset OTP";
+            String content= "Dear User,<br><br>Your OTP for password reset is: <b>" + otp + "</b><br><br>Regards,<br>Radhika Yadav";
+
+            helper.setText(content,true);
+            helper.setTo(email);
+            helper.setSubject(subject);
+            helper.setFrom("quillist001@gmail.com");
+            mailSender.send(mimeMailMessage);
+
+
+        }catch (Exception ex){
+            throw new RuntimeException("Failed to send OTP email", ex);
+
+        }
+    }
+
+
+    public String generateAndSendOtp(String email) {
+
+        UserEntity userEntity= userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("User not found"));
+        System.out.println("email from user entity to send otp : "+email+"========================================");
+        if(userEntity != null){
+            String otp = String.format("%06d", new Random().nextInt(999999));
+            System.out.println("Otp is : "+otp);
+
+            UserEntity user=userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("user not found"));
+            System.out.println("USer form email is : "+user);
+
+            user.setOtp(otp);
+            user.setOtpRequestedTime(LocalDateTime.now());
+            userRepo.save(user);
+            System.out.println("USer after save : "+user);
+
+            sendOtpEmail(email,otp);
+            return  otp;
+        }else{
+            throw new RuntimeException("User not found with email: " + email);
+        }
+    }
+
+
+
+    //varify OTP
+
+    public boolean verifyOtp(String email, String otp) {
+        UserEntity user = userRepo.findByUserName(email).orElseThrow(()->new RuntimeException("user not found"));
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        if (user.getOtp() == null) {
+            throw new RuntimeException("OTP not generated yet");
+        }
+
+        if (user.getOtp().equals(otp)) {
+            // Optional: You can check for expiry here if you want
+            user.setOtp(null);
+            user.setOtpRequestedTime(null);
+            userRepo.save(user);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+
+    @Override
+    public List<UserEntity> searchUsers(String keyword) {
+        return userRepo.findByNameContainingIgnoreCaseOrUserNameContainingIgnoreCase(keyword, keyword);
+    }
 
 
 
@@ -215,6 +302,29 @@ public class UserServiceImpl implements UserService {
     private String getFullPath() throws IOException {
         String dynamicPath = new ClassPathResource("").getFile().getAbsolutePath();
         return dynamicPath + File.separator + "resources" + File.separator + "static" + File.separator + "profiles";
+    }
+
+
+    @Override
+    public void generateFakeUsers(int count){
+        Faker faker = new Faker();
+        Gender[] genders = Gender.values();
+        Role[] roles = Role.values();
+        for(int i =0;i<count;i++){
+            UserEntity fakeuser= new UserEntity();
+
+            fakeuser.setName(faker.name().fullName());
+            fakeuser.setUserName(faker.name().username());
+            fakeuser.setPassword(passwordEncoder.encode("password123")); // default password
+            fakeuser.setDob(faker.date().birthday()); // you can randomize this too
+            fakeuser.setGender(genders[new Random().nextInt(genders.length)]);            fakeuser.setAddress(faker.address().fullAddress());
+            fakeuser.setProfileImage("/uploads/images/default-profile.png"); // or use a static image
+            String contactNumber = faker.number().digits(10); // Adjust length as needed (e.g., 10-digit Indian number)
+            fakeuser.setContactNumber(contactNumber);            fakeuser.setPincode(Integer.parseInt(faker.address().zipCode().replaceAll("[^0-9]", "")));
+            fakeuser.setAccessRole(roles[new Random().nextInt(roles.length)]);
+
+            userRepo.save(fakeuser);
+        }
     }
 
 }

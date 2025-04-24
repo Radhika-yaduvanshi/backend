@@ -22,6 +22,8 @@ public interface UserService {
     public String updateUser(UserProxy userProxy,MultipartFile image,Long id);
 
     public byte[] getProfileImage(String imageName) throws IOException;
+    public void generateFakeUsers(int count);
+    public List<UserEntity> searchUsers(String keyword);
 
 
 }

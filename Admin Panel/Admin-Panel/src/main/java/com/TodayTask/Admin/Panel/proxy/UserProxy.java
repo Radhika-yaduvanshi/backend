@@ -24,7 +24,7 @@ public class UserProxy {
     private Gender gender;
     private String address;
     private  String profileImage;
-    private Long contactNumber;
+    private String contactNumber;
     private Integer pincode;
     private Role accessRole;
     private String password;
