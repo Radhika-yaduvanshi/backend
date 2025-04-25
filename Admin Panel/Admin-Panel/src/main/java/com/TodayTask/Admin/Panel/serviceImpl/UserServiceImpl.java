@@ -10,15 +10,24 @@ import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
 import com.TodayTask.Admin.Panel.service.UserService;
 import com.TodayTask.Admin.Panel.util.Helper;
+import com.TodayTask.Admin.Panel.util.downloadExcel;
 import com.github.javafaker.Faker;
 import jakarta.mail.internet.MimeMessage;
 import org.apache.catalina.User;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,16 +38,21 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+
+import static com.TodayTask.Admin.Panel.util.downloadExcel.downloadUsersExcel;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -60,6 +74,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+
+
 
     private void sendOtpEmail(String email,String otp){
         try{
@@ -245,6 +262,8 @@ public class UserServiceImpl implements UserService {
         return new PageImpl<>(userProxyList, pageable, userPage.getTotalElements());
     }
 
+
+
     @Override
     public UserProxy getUserById(Long id) {
         UserEntity user = userRepo.findById(id).orElseThrow(()->new RuntimeException("User Not Found"));
@@ -276,33 +295,55 @@ public class UserServiceImpl implements UserService {
 
     }
 
+
+
     @Override
-    public String updateUser(UserProxy userProxy,Long id) {
-        Optional<UserEntity> user = userRepo.findById(id);
-        if(user.isPresent()){
-            UserEntity existingUser= user.get();
-            existingUser.setUserName(userProxy.getUserName());
-            existingUser.setName(userProxy.getName());
-            existingUser.setDob(userProxy.getDob());
-            existingUser.setPassword(passwordEncoder.encode(userProxy.getPassword())); // Encoding the password
-            existingUser.setGender(userProxy.getGender());
-            existingUser.setAddress(userProxy.getAddress());
-//            existingUser.setProfileImage(userProxy.getProfileImage());  // Update profile image URL
-            existingUser.setContactNumber(userProxy.getContactNumber());
-            existingUser.setPincode(userProxy.getPincode());
-            existingUser.setAccessRole(userProxy.getAccessRole());
-//            if (image != null && !image.isEmpty()) {
-//                String imageUrl = saveImage(image);
-//                existingUser.setProfileImage(imageUrl);
-//            }
+    public String updateUser(UserProxy userProxy, Long id) {
+        Optional<UserEntity> userOpt = userRepo.findById(id);
 
+        if (userOpt.isPresent()) {
+            UserEntity existingUser = userOpt.get();
 
-            // Save the updated user entity in the repository
+            if (userProxy.getUserName() != null)
+                existingUser.setUserName(userProxy.getUserName());
+
+            if (userProxy.getName() != null)
+                existingUser.setName(userProxy.getName());
+
+            if (userProxy.getDob() != null)
+                existingUser.setDob(userProxy.getDob());
+
+            if (userProxy.getEmail() != null)
+                existingUser.setEmail(userProxy.getEmail());
+
+            // if (userProxy.getPassword() != null)
+            //     existingUser.setPassword(passwordEncoder.encode(userProxy.getPassword()));
+
+            if (userProxy.getGender() != null)
+                existingUser.setGender(userProxy.getGender());
+
+            if (userProxy.getAddress() != null)
+                existingUser.setAddress(userProxy.getAddress());
+
+            if (userProxy.getContactNumber() != null)
+                existingUser.setContactNumber(userProxy.getContactNumber());
+
+            if (userProxy.getPincode() != null)
+                existingUser.setPincode(userProxy.getPincode());
+
+            if (userProxy.getAccessRole() != null)
+                existingUser.setAccessRole(userProxy.getAccessRole());
+
             userRepo.save(existingUser);
+            return "User updated successfully.";
         }
 
-        return "User Updated Sucessfully......";
+        return "User not found.";
     }
+
+
+
+
 
 
     @Override
@@ -379,4 +420,23 @@ public class UserServiceImpl implements UserService {
 //    }
 
 
-}
+
+
+
+    //download excel file
+    @Override
+    public  ByteArrayOutputStream downloadUsers() throws IOException {
+
+        List<UserEntity> usrs = userRepo.findAll();
+
+        ByteArrayOutputStream  in =    downloadExcel.downloadUsersExcel(usrs);
+        return in;
+
+    }
+
+
+
+    }
+
+
+

@@ -5,8 +5,10 @@ import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,7 @@ public interface UserService {
     public void resetPassword(String token, String newPassword);
 
     public Page<UserProxy> getAllUsers(int page , int size);
+    public ByteArrayOutputStream downloadUsers() throws IOException;
 
 
 }

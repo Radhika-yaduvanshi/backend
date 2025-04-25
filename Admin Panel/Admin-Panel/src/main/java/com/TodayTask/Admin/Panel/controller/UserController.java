@@ -44,6 +44,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/user")
+@CrossOrigin(origins = "http://localhost:4200", allowedHeaders = "*")
 public class UserController {
 
     @Autowired
@@ -202,6 +203,16 @@ public class UserController {
         Map<String, String> response = new HashMap<>();
         response.put("message", "Password reset successful");
         return ResponseEntity.ok(response);
+    }
+
+
+    //download excel sheet
+    @GetMapping("/download-users")
+    public ResponseEntity<byte[]> getdataFromDbtoExcell() throws IOException{
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=usersList.xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .body(userService.downloadUsers().toByteArray());
     }
 
 
