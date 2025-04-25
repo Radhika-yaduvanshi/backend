@@ -4,6 +4,7 @@ import com.TodayTask.Admin.Panel.Entity.LoginRequest;
 import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
+import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -14,7 +15,7 @@ public interface UserService {
 
     public String registerUser(UserProxy userProxy, MultipartFile image);
     public LoginResponse login(LoginRequest loginRequest);
-    public List<UserProxy> getAllUsers();
+//    public List<UserProxy> getAllUsers();
     public UserProxy getUserById(Long id);
     public Long getUserIdByName(String name);
 
@@ -28,9 +29,7 @@ public interface UserService {
     public void generateResetToken(String email);
     public void resetPassword(String token, String newPassword);
 
-    public List<UserProxy> getAllUser();
-
-
+    public Page<UserProxy> getAllUsers(int page , int size);
 
 
 }

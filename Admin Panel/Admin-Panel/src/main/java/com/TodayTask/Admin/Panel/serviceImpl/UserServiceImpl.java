@@ -15,6 +15,10 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -231,10 +235,14 @@ public class UserServiceImpl implements UserService {
     }
 
 
-    public List<UserProxy> getAllUsers(){
-        List<UserEntity> allusers = userRepo.findAll();
+    public Page<UserProxy> getAllUsers(int page ,int size){
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<UserEntity> userPage = userRepo.findAll(pageable);
 
-        return helper.convertList(allusers,UserProxy.class);
+
+        List<UserProxy> userProxyList = helper.convertList(userPage.getContent(),UserProxy.class);
+
+        return new PageImpl<>(userProxyList, pageable, userPage.getTotalElements());
     }
 
     @Override
@@ -290,7 +298,7 @@ public class UserServiceImpl implements UserService {
 
 
             // Save the updated user entity in the repository
-            userRepo.save(helper.convert(existingUser, UserEntity.class));
+            userRepo.save(existingUser);
         }
 
         return "User Updated Sucessfully......";
@@ -364,11 +372,11 @@ public class UserServiceImpl implements UserService {
         userRepo.save(user);
     }
 
-    @Override
-    public List<UserProxy> getAllUser() {
-        List<UserEntity> allusers = userRepo.findAll();
-     return    helper.convertList(allusers,UserProxy.class);
-    }
+//    @Override
+//    public List<UserProxy> getAllUser() {
+//        List<UserEntity> allusers = userRepo.findAll();
+//     return    helper.convertList(allusers,UserProxy.class);
+//    }
 
 
 }

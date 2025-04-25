@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -122,18 +123,17 @@ public class UserController {
     }
 
 
-//    @GetMapping("/getAllUsers")
-//    public List<UserProxy> getallusers(){
-//
-////        Sort sort = ascending ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-////        Pageable pageable = PageRequest.of(page, size, sort);
-//        return userService.getAllUsers();
-//    }
-
     @GetMapping("/getalluser")
-    public List<UserProxy> allusers(){
-        return userService.getAllUser();
+    public Page<UserProxy> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return userService.getAllUsers(page, size);
     }
+
+//    @GetMapping("/getalluser")
+//    public List<UserProxy> allusers(){
+//        return userService.getAllUser();
+//    }
 
 
 
