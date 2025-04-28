@@ -13,6 +13,7 @@ import com.TodayTask.Admin.Panel.util.Helper;
 import com.TodayTask.Admin.Panel.util.downloadExcel;
 import com.github.javafaker.Faker;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.transaction.Transactional;
 import org.apache.catalina.User;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -38,6 +39,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.beans.Transient;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -343,7 +345,11 @@ public class UserServiceImpl implements UserService {
 
 
 
-
+    public void getImageById(Long id) throws IOException {
+        UserEntity user = userRepo.findById(id).orElseThrow();
+        String profile =user.getProfileImage();
+        getProfileImage(profile);
+    }
 
 
     @Override
@@ -355,6 +361,34 @@ public class UserServiceImpl implements UserService {
         return dynamicPath + File.separator + "resources" + File.separator + "static" + File.separator + "profiles";
     }
 
+    @Override
+    @Transactional
+    public void updateProfileImage(Long userId, MultipartFile file) throws IOException{
+
+        UserEntity user=userRepo.findById(userId).orElseThrow(()->new RuntimeException("user not found"));
+        String uploadPath=getFullPath();
+        File folder=new File(uploadPath);
+        if(!folder.exists()){
+            folder.mkdirs();
+        }
+        String fileName=System.currentTimeMillis()+"_"+file.getOriginalFilename();
+        Path filePath=Path.of(uploadPath,fileName);
+        Files.write(filePath,file.getBytes());
+        // Update database
+        user.setProfileImage(fileName);
+        userRepo.save(user);
+
+    }
+
+
+    public long countUsers(){
+
+        List<UserEntity> users= userRepo.findAll();
+       long totalusers = users.stream().count();
+        System.out.println("Total users : "+totalusers);
+
+        return totalusers;
+    }
 
     @Override
     public void generateFakeUsers(int count){

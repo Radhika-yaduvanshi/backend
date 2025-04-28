@@ -215,5 +215,24 @@ public class UserController {
                 .body(userService.downloadUsers().toByteArray());
     }
 
+    @GetMapping("/totalUsers")
+    public long totalusers(){
+        return userService.countUsers();
+    }
 
+    @PutMapping("/uploadProfileImage")
+    public void updateProfileImage(@RequestParam("userId") Long userId,@RequestParam("file") MultipartFile file) throws IOException{
+         userService.updateProfileImage(userId,file);
+    }
+
+
+    @GetMapping("/getProfileImage/{imageName}")
+    public byte[] getProfileImage(@PathVariable("imageName") String imageName) throws IOException{
+        return userService.getProfileImage(imageName);
+    }
+    @GetMapping("/getProfileImageById/{id}")
+    public void getImageById(@PathVariable("id") Long id) throws IOException{
+        userService.getImageById(id);
+
+    }
 }
