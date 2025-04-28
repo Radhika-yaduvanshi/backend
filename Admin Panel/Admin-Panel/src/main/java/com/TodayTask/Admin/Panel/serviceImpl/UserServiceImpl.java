@@ -13,6 +13,8 @@ import com.TodayTask.Admin.Panel.util.Helper;
 import com.TodayTask.Admin.Panel.util.downloadExcel;
 import com.github.javafaker.Faker;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.apache.catalina.User;
 import org.apache.poi.ss.usermodel.Row;
@@ -78,7 +80,8 @@ public class UserServiceImpl implements UserService {
     private JavaMailSender mailSender;
 
 
-
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private void sendOtpEmail(String email,String otp){
         try{
@@ -365,7 +368,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void updateProfileImage(Long userId, MultipartFile file) throws IOException{
 
+        System.out.println("Starting updateProfileImage for user: " + userId);
+        System.out.println("File received: " + file.getOriginalFilename() + ", size: " + file.getSize());
+
+
         UserEntity user=userRepo.findById(userId).orElseThrow(()->new RuntimeException("user not found"));
+        System.out.println("Found user with ID: " + userId + ", current profileImage: " + user.getProfileImage());
+
         String uploadPath=getFullPath();
         File folder=new File(uploadPath);
         if(!folder.exists()){
@@ -373,10 +382,14 @@ public class UserServiceImpl implements UserService {
         }
         String fileName=System.currentTimeMillis()+"_"+file.getOriginalFilename();
         Path filePath=Path.of(uploadPath,fileName);
+        System.out.println("Attempting to write file to: " + filePath);
+
         Files.write(filePath,file.getBytes());
         // Update database
         user.setProfileImage(fileName);
         userRepo.save(user);
+
+        entityManager.flush();
 
     }
 
@@ -422,7 +435,9 @@ public class UserServiceImpl implements UserService {
         String token = UUID.randomUUID().toString();
         user.setResetToken(token);
         user.setTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        System.out.println("befor save reset token "+token);
         userRepo.save(user);
+        System.out.println("after save reset token : "+userRepo.findByEmail(email).get().getResetToken());
         System.out.println("http://localhost:4200/reset-password?token=" + token);
     }
     @Override
@@ -436,8 +451,12 @@ public class UserServiceImpl implements UserService {
         UserEntity user = userRepo.findByResetToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
 
-        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Token expired");
+//        if (user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+//            throw new RuntimeException("Token expired");
+//        }
+
+        if (user.getTokenExpiry() == null || user.getTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token expired or already used");
         }
 
 //        emp.setPassword(newPassword); // Use encoder in real apps

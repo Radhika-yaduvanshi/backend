@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -190,11 +191,18 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+//    @GetMapping("/validate-token/{token}")
+//    public ResponseEntity<?> validateToken(@PathVariable String token) {
+//        boolean valid = userService.validateToken(token);
+//        return ResponseEntity.ok(valid);
+//    }
+
     @GetMapping("/validate-token/{token}")
-    public ResponseEntity<?> validateToken(@PathVariable String token) {
+    public ResponseEntity<Boolean> validateToken(@PathVariable String token) {
         boolean valid = userService.validateToken(token);
-        return ResponseEntity.ok(valid);
+        return valid ? ResponseEntity.ok(true) : ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(false);
     }
+
 
     @PostMapping("/reset-password/{token}")
     public ResponseEntity<?> resetPassword(@PathVariable String token, @RequestBody ResetPasswordRequest password) {
@@ -204,6 +212,8 @@ public class UserController {
         response.put("message", "Password reset successful");
         return ResponseEntity.ok(response);
     }
+
+
 
 
     //download excel sheet
@@ -219,12 +229,18 @@ public class UserController {
     public long totalusers(){
         return userService.countUsers();
     }
-
-    @PutMapping("/uploadProfileImage")
-    public void updateProfileImage(@RequestParam("userId") Long userId,@RequestParam("file") MultipartFile file) throws IOException{
-         userService.updateProfileImage(userId,file);
+    @PutMapping("/uploadProfileImage/{userId}")
+    public ResponseEntity<?> updateProfileImage(@PathVariable("userId") Long userId, @RequestParam("file") MultipartFile file) throws IOException {
+        try {
+            System.out.println("inside controller of upload image =================================================================================");
+            userService.updateProfileImage(userId, file);
+            return ResponseEntity.ok().body(Map.of("message", "Image updated successfully"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
-
 
     @GetMapping("/getProfileImage/{imageName}")
     public byte[] getProfileImage(@PathVariable("imageName") String imageName) throws IOException{
