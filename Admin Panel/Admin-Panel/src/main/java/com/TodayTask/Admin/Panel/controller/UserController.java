@@ -103,6 +103,7 @@ public class UserController {
             @RequestParam("user") String userJson,        // Get it as a string
             @RequestParam("image") MultipartFile image
     ) {
+
         try {
             ObjectMapper mapper = new ObjectMapper();
             mapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd")); // Optional if using date fields
@@ -229,18 +230,32 @@ public class UserController {
     public long totalusers(){
         return userService.countUsers();
     }
-    @PutMapping("/uploadProfileImage/{userId}")
-    public ResponseEntity<?> updateProfileImage(@PathVariable("userId") Long userId, @RequestParam("file") MultipartFile file) throws IOException {
-        try {
-            System.out.println("inside controller of upload image =================================================================================");
-            userService.updateProfileImage(userId, file);
-            return ResponseEntity.ok().body(Map.of("message", "Image updated successfully"));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", e.getMessage()));
+
+
+        @PostMapping(path="/uploadProfileImage/{userId}",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        public ResponseEntity<?> updateProfileImage(@PathVariable("userId") Long userId,
+                                                    @RequestParam("file") MultipartFile file) throws IOException {
+            try {
+                System.out.println("Inside controller: Received request to upload profile image.");
+                System.out.println("User ID: " + userId);
+                System.out.println("File name: " + file.getOriginalFilename());
+                System.out.println("File size: " + file.getSize());
+
+
+                System.out.println("inside controller =======================================================================================================");
+                String storedFileName = userService.updateProfileImage(userId, file);
+                // Send back the stored file name as part of the response
+                System.out.println("Returning response: fileName = " + storedFileName);
+
+                return ResponseEntity.ok(Map.of("fileName", storedFileName));
+            } catch (Exception e) {
+                e.printStackTrace();
+
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", e.getMessage()));
+            }
         }
-    }
+
 
     @GetMapping("/getProfileImage/{imageName}")
     public byte[] getProfileImage(@PathVariable("imageName") String imageName) throws IOException{

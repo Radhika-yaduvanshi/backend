@@ -366,8 +366,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateProfileImage(Long userId, MultipartFile file) throws IOException{
+    public String updateProfileImage(Long userId, MultipartFile file) throws IOException{
 
+        System.out.println("++==============================================inservice imp l=====================================================");
         System.out.println("Starting updateProfileImage for user: " + userId);
         System.out.println("File received: " + file.getOriginalFilename() + ", size: " + file.getSize());
 
@@ -390,6 +391,7 @@ public class UserServiceImpl implements UserService {
         userRepo.save(user);
 
         entityManager.flush();
+        return  fileName;
 
     }
 

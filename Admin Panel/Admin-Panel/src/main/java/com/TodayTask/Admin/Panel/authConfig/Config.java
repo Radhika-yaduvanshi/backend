@@ -4,6 +4,7 @@ package com.TodayTask.Admin.Panel.authConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -52,7 +53,9 @@ public class Config implements WebMvcConfigurer
 		http.csrf(csrf->csrf.disable());
 //		http.authorizeHttpRequests(auth->auth.requestMatchers("/","/user/saveUser","/user/generate","/extractAll/**","/dateEx/**","/user/loginReq","/user/register",
 //				"/generateOTP").permitAll().
-		http.authorizeHttpRequests(auth->auth.requestMatchers("/user/generate/**","/user/loginReq","/user/register","/user/update","update/**","/user/forgot-password/**","/user/reset-password/**","/user/validate-token/**","/user/reset-password/**","/user/getProfileImage/**").permitAll().
+		http.authorizeHttpRequests(auth->auth
+				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+				.requestMatchers("/user/uploadProfileImage/**","/user/generate/**","/user/loginReq","/user/register","/user/update","update/**","/user/forgot-password/**","/user/reset-password/**","/user/validate-token/**","/user/reset-password/**","/user/getProfileImage/**").permitAll().
 				anyRequest().authenticated());
 		http.httpBasic(Customizer.withDefaults());
 //		http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));

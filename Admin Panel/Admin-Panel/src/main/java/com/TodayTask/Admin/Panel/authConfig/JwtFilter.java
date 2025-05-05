@@ -81,4 +81,14 @@ public class JwtFilter extends OncePerRequestFilter {
 
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+
+        return path.startsWith("/user/uploadProfileImage/**") ||
+                "OPTIONS".equalsIgnoreCase(method);
+    }
+
+
 }

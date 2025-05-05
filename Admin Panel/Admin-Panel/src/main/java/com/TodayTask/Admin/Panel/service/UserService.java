@@ -34,7 +34,7 @@ public interface UserService {
     public Page<UserProxy> getAllUsers(int page , int size);
     public ByteArrayOutputStream downloadUsers() throws IOException;
     public long countUsers();
-    public void updateProfileImage(Long userId, MultipartFile file) throws IOException;
+    public String updateProfileImage(Long userId, MultipartFile file) throws IOException;
 
 
 }
