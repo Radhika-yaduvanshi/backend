@@ -10,6 +10,7 @@ import com.TodayTask.Admin.Panel.service.UserService;
 import com.TodayTask.Admin.Panel.serviceImpl.UserServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
@@ -151,11 +152,52 @@ public class UserController {
     }
 
     @DeleteMapping("/deleteUser/{id}")
-    public String deleteuser(@PathVariable("id") Long id){
-        return userService.deleteUser(id);
+    public ResponseEntity<String> deleteUser(@PathVariable("id") Long id) {
+        System.out.println("inside controller : ");
+        String response = userService.deleteUser(id);
+
+        System.out.println("here after delete : ");
+
+        // Log response for debugging
+        System.out.println("Delete response: " + response);
+
+        if (response.equals("User marked as deleted successfully!")) {
+            return ResponseEntity.ok(response);  // 200 OK response
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);  // 404 if user not found
+        }
     }
 
 
+//    @GetMapping("/getNonDeletedUsers")
+//    public ResponseEntity<List<UserEntity>> getIsDeletedFalseActicveTrue(){
+//        System.out.println("inside nondeleted controller ...");
+//
+//        List<UserEntity> users = userService.getIsDeletedFalseActicveTrue();
+//        System.out.println("users non deleted : "+users);
+////        if(users.isEmpty()){
+////            return  ResponseEntity.noContent().build();
+////        }
+//        return ResponseEntity.ok((users));
+//    }
+
+
+    @GetMapping("/isDeleted")
+    public List<UserEntity> isDeleted(){
+        return userService.isDeleted();
+
+    }
+//
+//    @GetMapping("/nonDeletedUsers")
+//    public List<UserEntity> nonDeleted(){
+//        return userService.nonDeleted();
+//    }
+@GetMapping("/getNonDeletedUsers")
+public Page<UserProxy> getNonDeletedUsers(
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "10") int size) {
+    return userService.getNonDeletedUsers(page, size);
+}
 
 
 

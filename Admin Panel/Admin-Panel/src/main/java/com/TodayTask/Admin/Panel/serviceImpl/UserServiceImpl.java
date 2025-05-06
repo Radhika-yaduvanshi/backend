@@ -163,38 +163,55 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public String registerUser(UserProxy userProxy,MultipartFile image) {
-        Optional<UserEntity> existingUser = userRepo.findByUserName(userProxy.getUserName());
+    public String registerUser(UserProxy userProxy, MultipartFile image) {
+        try {
+            // Basic manual validations
+            if (userProxy.getUserName() == null || userProxy.getUserName().trim().isEmpty()) {
+                return "Username cannot be blank.";
+            }
+            if (userProxy.getPassword() == null || userProxy.getPassword().length() < 6) {
+                return "Password must be at least 6 characters long.";
+            }
+            if (userProxy.getEmail() == null || !userProxy.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                return "Invalid email format.";
+            }
+            if (userProxy.getContactNumber() == null || !userProxy.getContactNumber().matches("\\d{10}")) {
+                return "Contact number must be 10 digits.";
+            }
 
-        if (existingUser.isPresent()) {
-            return "User with User Name already exists ....";
+            // Check if user already exists
+            Optional<UserEntity> existingUser = userRepo.findByUserName(userProxy.getUserName());
+            if (existingUser.isPresent()) {
+                return "User with User Name already exists.";
+            }
+
+            // Save image and build entity
+            String imageUrl = saveImage(image);
+
+            UserEntity newUser = new UserEntity();
+            newUser.setName(userProxy.getName());
+            newUser.setDob(userProxy.getDob());
+            newUser.setEmail(userProxy.getEmail());
+
+            newUser.setUserName(userProxy.getUserName());
+            newUser.setPassword(passwordEncoder.encode(userProxy.getPassword()));
+            newUser.setGender(userProxy.getGender());
+            newUser.setAddress(userProxy.getAddress());
+            newUser.setProfileImage(imageUrl);
+            newUser.setContactNumber(userProxy.getContactNumber());
+            newUser.setPincode(userProxy.getPincode());
+            newUser.setAccessRole(userProxy.getAccessRole());
+
+            // Save user
+            userRepo.save(helper.convert(newUser, UserEntity.class));
+
+            return "Registration successful!";
+        } catch (Exception e) {
+            // Log error (optional: use logger)
+            e.printStackTrace();
+            return "An error occurred during registration: " + e.getMessage();
         }
-
-
-        String imageUrl = saveImage(image);
-
-
-        // Set user details
-        UserEntity newUser = new UserEntity();
-        newUser.setName(userProxy.getName());
-        newUser.setDob(userProxy.getDob());
-        newUser.setUserName(userProxy.getUserName());
-        newUser.setPassword(passwordEncoder.encode(userProxy.getPassword()));  // Encoding the password
-        newUser.setGender(userProxy.getGender());
-        newUser.setAddress(userProxy.getAddress());
-        newUser.setProfileImage(imageUrl);  // Storing image URL path
-        newUser.setContactNumber(userProxy.getContactNumber());
-        newUser.setPincode(userProxy.getPincode());
-        newUser.setAccessRole(userProxy.getAccessRole());
-
-        // Save user to the repository
-
-
-        userRepo.save(helper.convert(newUser,UserEntity.class));
-
-        return "Registration successful!";
     }
-
 
 
 
@@ -285,11 +302,72 @@ public class UserServiceImpl implements UserService {
         return userid;
     }
 
-    @Override
-    public String deleteUser(Long id) {
-        userRepo.deleteById(id);
-        return "User Deleted Successfully!!!!";
+//    @Override
+//    public String deleteUser(Long id) {
+////        userRepo.deleteById(id);
+//        UserEntity user = new UserEntity();
+//        user.setIsdeleted(true);
+//        user.setIsactive(false);
+//        userRepo.save(user);
+//        return "User Deleted Successfully!!!!";
+//    }
+
+@Override
+@Transactional
+public String deleteUser(Long id) {
+    Optional<UserEntity> existingUser = userRepo.findById(id);
+    System.out.println("esisting user is ; "+existingUser);
+    System.out.println("existing user is pressent : "+existingUser.isPresent());
+    if (existingUser.isPresent()) {
+
+        UserEntity user = existingUser.get();
+
+        user.setIsDeleted(true);
+        System.out.println("if user is deleted : "+user.getIsDeleted());
+        user.setIsActive(false);
+
+        // Flush changes to database
+        entityManager.flush();  // Forces the changes to be persisted immediately
+
+        return "User marked as deleted successfully!";
+    } else {
+        return "User not found!";
     }
+}
+
+public List<UserEntity> isDeleted(){
+    List<UserEntity> deletedUsers = userRepo.findByIsDeletedTrue();
+    return deletedUsers;
+}
+
+//public List<UserEntity> nonDeleted(){
+//    List<UserEntity> nonDeletedUsers=userRepo.findByIsDeletedFalse();
+//    return  nonDeletedUsers;
+//}
+
+    public Page<UserProxy> getNonDeletedUsers(int page, int size) {
+        // Create a pageable object for pagination
+        PageRequest pageable = PageRequest.of(page, size);
+
+        // Fetch non-deleted users with pagination
+        Page<UserEntity> nonDeletedUserPage = userRepo.findByIsDeletedFalse(pageable);
+
+        // Convert the UserEntity list to UserProxy list
+        List<UserProxy> userProxyList = helper.convertList(nonDeletedUserPage.getContent(), UserProxy.class);
+
+        // Return a Page with paginated results
+        return new PageImpl<>(userProxyList, pageable, nonDeletedUserPage.getTotalElements());
+    }
+
+
+
+
+    public List<UserEntity> getActiveUsers() {
+        return userRepo.findByIsDeletedFalseAndIsActiveTrue();
+    }
+
+
+
 
 
 
@@ -404,27 +482,40 @@ public class UserServiceImpl implements UserService {
 
         return totalusers;
     }
-
     @Override
-    public void generateFakeUsers(int count){
+    public void generateFakeUsers(int count) {
         Faker faker = new Faker();
         Gender[] genders = Gender.values();
         Role[] roles = Role.values();
-        for(int i =0;i<count;i++){
-            UserEntity fakeuser= new UserEntity();
+        Random random = new Random();
 
-            fakeuser.setName(faker.name().fullName());
-            fakeuser.setUserName(faker.name().username());
-            fakeuser.setEmail(faker.internet().emailAddress());
-            fakeuser.setPassword(passwordEncoder.encode("password123")); // default password
-            fakeuser.setDob(faker.date().birthday()); // you can randomize this too
-            fakeuser.setGender(genders[new Random().nextInt(genders.length)]);            fakeuser.setAddress(faker.address().fullAddress());
-            fakeuser.setProfileImage("/uploads/images/default-profile.png"); // or use a static image
-            String contactNumber = faker.number().digits(10); // Adjust length as needed (e.g., 10-digit Indian number)
-            fakeuser.setContactNumber(contactNumber);            fakeuser.setPincode(Integer.parseInt(faker.address().zipCode().replaceAll("[^0-9]", "")));
-            fakeuser.setAccessRole(roles[new Random().nextInt(roles.length)]);
+        for (int i = 0; i < count; i++) {
+            UserEntity fakeUser = new UserEntity();
 
-            userRepo.save(fakeuser);
+            fakeUser.setName(faker.name().fullName());
+            fakeUser.setUserName(faker.name().username());
+            fakeUser.setEmail(faker.internet().emailAddress());
+            fakeUser.setPassword(passwordEncoder.encode("password123"));
+            fakeUser.setDob(faker.date().birthday());
+            fakeUser.setGender(genders[random.nextInt(genders.length)]);
+            fakeUser.setAddress(faker.address().fullAddress());
+            fakeUser.setProfileImage("default-profile.png");
+
+            // Ensure 10-digit number
+            String contactNumber = faker.number().digits(10);
+            fakeUser.setContactNumber(contactNumber);
+
+            // Ensure valid 6-digit pin (within 100000–999999)
+            int validPin = 100000 + random.nextInt(900000);
+            fakeUser.setPincode(validPin);
+
+            fakeUser.setAccessRole(roles[random.nextInt(roles.length)]);
+
+            // Explicitly set these fields
+            fakeUser.setIsActive(true);
+            fakeUser.setIsDeleted(false);
+
+            userRepo.save(fakeUser);
         }
     }
 
@@ -487,6 +578,11 @@ public class UserServiceImpl implements UserService {
         ByteArrayOutputStream  in =    downloadExcel.downloadUsersExcel(usrs);
         return in;
 
+    }
+
+    public List<UserEntity> getIsDeletedFalseActicveTrue(){
+    List<UserEntity> nonDeletedAndActiveUsers= userRepo.findByIsDeletedFalseAndIsActiveTrue();
+    return  nonDeletedAndActiveUsers;
     }
 
 

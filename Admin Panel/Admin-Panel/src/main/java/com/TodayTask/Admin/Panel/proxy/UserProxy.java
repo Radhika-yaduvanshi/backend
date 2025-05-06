@@ -34,4 +34,9 @@ public class UserProxy {
     private String resetToken;
     private LocalDateTime tokenExpiry;
 
+    private Boolean isActive ;
+    private Boolean isDeleted ;
+
+
+
 }
