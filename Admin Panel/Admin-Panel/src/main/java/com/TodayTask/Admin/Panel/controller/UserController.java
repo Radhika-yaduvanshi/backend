@@ -118,16 +118,16 @@ public class UserController {
     }
 
 
-    @PostMapping("/loginReq") //working
-    public LoginResponse login(@RequestBody LoginRequest loginRequest)
-    {
+    @PostMapping("/loginReq") // working
+    @ResponseStatus(HttpStatus.OK)
+    public LoginResponse login(@RequestBody LoginRequest loginRequest) {
         System.out.println("THis is controller");
-        System.out.println(loginRequest.getPassword()+"\n"+loginRequest.getUserName());
+        System.out.println(loginRequest.getPassword() + "\n" + loginRequest.getUserName());
         return userService.login(loginRequest);
     }
 
-
     @GetMapping("/getalluser")
+    @ResponseStatus(HttpStatus.OK)
     public Page<UserProxy> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {

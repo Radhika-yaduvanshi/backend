@@ -21,6 +21,7 @@ Optional<UserEntity> findByUserName(String name);
     List<UserEntity> findByIsDeletedTrue();
 //    List<UserEntity>findByIsDeletedFalse();
 Page<UserEntity> findByIsDeletedFalse(Pageable pageable);
+    Page<UserEntity> findByIsDeletedTrue(Pageable pageable);
 
 
 

@@ -246,43 +246,50 @@ public class UserServiceImpl implements UserService {
 
 
 
-
     @Override
     public LoginResponse login(LoginRequest loginRequest) {
-        System.out.println("login response from emp service called..");
-//		Authentication authentication=new UsernamePasswordAuthenticationToken(loginRequest.getUserName(), loginRequest.getPassword());
-        Authentication authentication=new UsernamePasswordAuthenticationToken(loginRequest.getUserName(), loginRequest.getPassword());
-        System.err.println("Authentication : "+authentication);
+        try {
+            System.out.println("login response from emp service called..");
+            Authentication authentication = new UsernamePasswordAuthenticationToken(loginRequest.getUserName(), loginRequest.getPassword());
+            System.err.println("Authentication : " + authentication);
 
-        Authentication verified = authmanager	.authenticate(authentication);
+            Authentication verified = authmanager.authenticate(authentication);
 
-        System.err.println("is varified : "+verified);
-        System.err.println(verified.isAuthenticated());
-        if(!verified.isAuthenticated())
-        {
-            //System.out.println("user not found");
-            //System.err.println("user not found");
-            //throw new BadCredicialException(null, null);
-            //throw new BadCredentialsException("Bad credentials...");
-            System.out.println("bad credials..");
-            //throw new ErrorResponse("bad credentials",404);
+            System.err.println("is varified : " + verified);
+            System.err.println(verified.isAuthenticated());
+            if (!verified.isAuthenticated()) {
+                System.out.println("bad credials..");
+            }
+
+            System.out.println("generated token is : " + jwtService.genearteTocken(loginRequest.getUserName()));
+
+            return new LoginResponse(
+                    loginRequest.getUserName(),
+                    jwtService.genearteTocken(loginRequest.getUserName()),
+                    (List<SimpleGrantedAuthority>) verified.getAuthorities()
+            );
+        } catch (Exception e) {
+            System.err.println("Exception occurred during login: " + e.getMessage());
+            e.printStackTrace();
+            return null; // Or handle the exception as per your design (e.g., throw custom exception)
         }
-        System.out.println("generated token is : "+jwtService.genearteTocken(loginRequest.getUserName()));
-
-        return new LoginResponse(loginRequest.getUserName(),jwtService.genearteTocken(loginRequest.getUserName()),(List<SimpleGrantedAuthority>) verified.getAuthorities());
-
     }
 
+    public Page<UserProxy> getAllUsers(int page, int size) {
+        try {
+            PageRequest pageable = PageRequest.of(page, size);
+            Page<UserEntity> userPage = userRepo.findAll(pageable);
 
-    public Page<UserProxy> getAllUsers(int page ,int size){
-        PageRequest pageable = PageRequest.of(page, size);
-        Page<UserEntity> userPage = userRepo.findAll(pageable);
+            List<UserProxy> userProxyList = helper.convertList(userPage.getContent(), UserProxy.class);
 
-
-        List<UserProxy> userProxyList = helper.convertList(userPage.getContent(),UserProxy.class);
-
-        return new PageImpl<>(userProxyList, pageable, userPage.getTotalElements());
+            return new PageImpl<>(userProxyList, pageable, userPage.getTotalElements());
+        } catch (Exception e) {
+            System.err.println("Exception occurred while fetching users: " + e.getMessage());
+            e.printStackTrace();
+            return Page.empty(); // Or return null / custom fallback as per your design
+        }
     }
+
 
 
 
@@ -326,9 +333,6 @@ public String deleteUser(Long id) {
         System.out.println("if user is deleted : "+user.getIsDeleted());
         user.setIsActive(false);
 
-        // Flush changes to database
-        entityManager.flush();  // Forces the changes to be persisted immediately
-
         return "User marked as deleted successfully!";
     } else {
         return "User not found!";
@@ -346,16 +350,9 @@ public List<UserEntity> isDeleted(){
 //}
 
     public Page<UserProxy> getNonDeletedUsers(int page, int size) {
-        // Create a pageable object for pagination
         PageRequest pageable = PageRequest.of(page, size);
-
-        // Fetch non-deleted users with pagination
         Page<UserEntity> nonDeletedUserPage = userRepo.findByIsDeletedFalse(pageable);
-
-        // Convert the UserEntity list to UserProxy list
         List<UserProxy> userProxyList = helper.convertList(nonDeletedUserPage.getContent(), UserProxy.class);
-
-        // Return a Page with paginated results
         return new PageImpl<>(userProxyList, pageable, nonDeletedUserPage.getTotalElements());
     }
 
