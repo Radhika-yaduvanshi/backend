@@ -10,6 +10,7 @@ import com.TodayTask.Admin.Panel.service.UserService;
 import com.TodayTask.Admin.Panel.serviceImpl.UserServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.User;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -308,4 +309,17 @@ public Page<UserProxy> getNonDeletedUsers(
         userService.getImageById(id);
 
     }
+    @PostMapping("/upload-users")
+    public ResponseEntity<String> uploadUsers(@RequestParam("file") MultipartFile file) {
+        userService.importUsersFromExcel(file);
+        return ResponseEntity.ok("Users imported successfully");
+    }
+
+
+    //download xl template
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) throws IOException {
+    userService.downloadTemplate(response);
+    }
+
 }

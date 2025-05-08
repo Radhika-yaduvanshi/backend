@@ -3,6 +3,7 @@ package com.TodayTask.Admin.Panel.serviceImpl;
 import com.TodayTask.Admin.Panel.Entity.LoginRequest;
 import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
+import com.TodayTask.Admin.Panel.Exceptions.ExcelImportException;
 import com.TodayTask.Admin.Panel.authConfig.JwtService;
 import com.TodayTask.Admin.Panel.enums.Gender;
 import com.TodayTask.Admin.Panel.enums.Role;
@@ -15,11 +16,10 @@ import com.github.javafaker.Faker;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import org.apache.catalina.User;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -51,10 +51,7 @@ import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 import static com.TodayTask.Admin.Panel.util.downloadExcel.downloadUsersExcel;
 
@@ -580,6 +577,166 @@ public List<UserEntity> isDeleted(){
     public List<UserEntity> getIsDeletedFalseActicveTrue(){
     List<UserEntity> nonDeletedAndActiveUsers= userRepo.findByIsDeletedFalseAndIsActiveTrue();
     return  nonDeletedAndActiveUsers;
+    }
+
+    public void importUsersFromExcel(MultipartFile file) {
+
+        List<String> errorMessages = new ArrayList<>();
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                try {
+                    Row row = sheet.getRow(i);
+                    if (row == null) continue;
+
+                    UserEntity user = new UserEntity();
+
+                    // Name
+                    String name = getStringCellValue(row.getCell(0));
+                    if (name.isBlank() || name.length() < 2 || name.length() > 100)
+                        throw new IllegalArgumentException("Invalid name at row " + i);
+                    user.setName(name);
+
+                    // DOB
+                    Cell dobCell = row.getCell(1);
+                    Date dob;
+                    if (dobCell == null)
+                        throw new IllegalArgumentException("DOB is missing at row " + i);
+                    if (dobCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dobCell)) {
+                        dob = dobCell.getDateCellValue();
+                    } else {
+                        String dobStr = dobCell.getStringCellValue().trim();
+                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                        dob = sdf.parse(dobStr);
+                    }
+                    user.setDob(dob);
+
+                    // Username
+                    String userName = getStringCellValue(row.getCell(2));
+                    if (userName.isBlank() || userName.length() < 3 || userName.length() > 50)
+                        throw new IllegalArgumentException("Invalid username at row " + i);
+                    user.setUserName(userName);
+
+                    // Email
+                    String email = getStringCellValue(row.getCell(3));
+                    if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"))
+                        throw new IllegalArgumentException("Invalid email format at row " + i);
+                    Optional<UserEntity> existingUser = userRepo.findByEmail(email);
+                    if (existingUser.isPresent()) {
+                        throw new IllegalArgumentException("Email already exists at row " + i + ": " + email);
+                    }
+                    user.setEmail(email);
+
+                    // Gender
+                    String genderStr = getStringCellValue(row.getCell(4)).toUpperCase();
+                    try {
+                        user.setGender(Gender.valueOf(genderStr));
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException("Invalid gender at row " + i);
+                    }
+
+                    // Address
+                    String address = getStringCellValue(row.getCell(5));
+                    if (address.isBlank())
+                        throw new IllegalArgumentException("Address is missing at row " + i);
+                    user.setAddress(address);
+
+                    // Profile Image (optional)
+                    user.setProfileImage(getStringOrNull(row.getCell(6)));
+
+                    // Contact Number
+                    String contact = getStringCellValue(row.getCell(7));
+                    if (!contact.matches("^\\d{10}$"))
+                        throw new IllegalArgumentException("Invalid contact number at row " + i);
+                    user.setContactNumber(contact);
+
+                    // Pincode
+                    Cell pincodeCell = row.getCell(8);
+                    int pincode;
+                    if (pincodeCell.getCellType() == CellType.NUMERIC) {
+                        pincode = (int) pincodeCell.getNumericCellValue();
+                    } else {
+                        pincode = Integer.parseInt(pincodeCell.getStringCellValue().trim());
+                    }
+                    if (pincode < 100000 || pincode > 999999)
+                        throw new IllegalArgumentException("Invalid pincode at row " + i);
+                    user.setPincode(pincode);
+
+                    // Role
+                    String roleStr = getStringCellValue(row.getCell(9)).toUpperCase();
+                    try {
+                        user.setAccessRole(Role.valueOf(roleStr));
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException("Invalid role at row " + i);
+                    }
+
+                    // Password
+                    String rawPassword = getStringCellValue(row.getCell(10));
+                    if (rawPassword.isBlank() || rawPassword.length() < 6)
+                        throw new IllegalArgumentException("Invalid password at row " + i);
+                    user.setPassword(passwordEncoder.encode(rawPassword));
+
+                    // Save to DB
+                    userRepo.save(user);
+                    System.out.println("User saved: " + user.getUserName());
+
+                } catch (Exception e) {
+//                    System.err.println("Failed to process row " + i + ": " + e.getMessage());
+                    errorMessages.add("Row "+i +":"+e.getMessage());
+                }
+            }
+            if(!errorMessages.isEmpty()){
+                throw  new ExcelImportException(String.join("\n",errorMessages));
+            }
+
+        } catch (ExcelImportException e){
+            throw  e;
+        }
+
+        catch (Exception e) {
+            throw new RuntimeException("Failed to import users: " + e.getMessage(), e);
+        }
+    }
+
+
+    private String getStringCellValue(Cell cell) {
+        if (cell == null) return "";
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue().trim();
+            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            default -> "";
+        };
+    }
+
+    private String getStringOrNull(Cell cell) {
+        if (cell == null || cell.getCellType() == CellType.BLANK) return null;
+        return getStringCellValue(cell);
+    }
+
+
+
+    //download xl template
+    public void downloadTemplate(HttpServletResponse response) throws IOException {
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("Users");
+
+        String[] columns = {"Name", "DOB", "Username", "Email", "Gender", "Address", "ProfileImage",
+                "ContactNumber", "Pincode", "AccessRole", "Password"};
+
+        Row header = sheet.createRow(0);
+        for (int i = 0; i < columns.length; i++) {
+            Cell cell = header.createCell(i);
+            cell.setCellValue(columns[i]);
+        }
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=UserTemplate.xlsx");
+
+        workbook.write(response.getOutputStream());
+        workbook.close();
     }
 
 

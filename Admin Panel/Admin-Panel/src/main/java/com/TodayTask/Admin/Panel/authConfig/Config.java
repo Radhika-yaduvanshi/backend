@@ -55,7 +55,7 @@ public class Config implements WebMvcConfigurer
 //				"/generateOTP").permitAll().
 		http.authorizeHttpRequests(auth->auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-				.requestMatchers("/user/uploadProfileImage/**","/user/generate/**","/user/loginReq","/user/register","/user/update","update/**","/user/forgot-password/**","/user/reset-password/**","/user/validate-token/**","/user/reset-password/**","/user/getProfileImage/**").permitAll().
+				.requestMatchers("/user/template","/user/upload-users","/user/uploadProfileImage/**","/user/generate/**","/user/loginReq","/user/register","/user/update","update/**","/user/forgot-password/**","/user/reset-password/**","/user/validate-token/**","/user/reset-password/**","/user/getProfileImage/**").permitAll().
 				anyRequest().authenticated());
 		http.httpBasic(Customizer.withDefaults());
 //		http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
