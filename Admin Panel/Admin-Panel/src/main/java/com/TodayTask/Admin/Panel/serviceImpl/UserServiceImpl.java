@@ -152,9 +152,10 @@ public class UserServiceImpl implements UserService {
     }
 
 
-    @Override
+//    @Override
     public List<UserEntity> searchUsers(String keyword) {
-        return userRepo.findByNameContainingIgnoreCaseOrUserNameContainingIgnoreCase(keyword, keyword);
+//        return userRepo.findByNameContainingIgnoreCaseOrUserNameContainingIgnoreCase(keyword, keyword);
+        return userRepo.searchUsers(keyword);
     }
 
 
@@ -162,7 +163,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public String registerUser(UserProxy userProxy, MultipartFile image) {
         try {
-            // Basic manual validations
             if (userProxy.getUserName() == null || userProxy.getUserName().trim().isEmpty()) {
                 return "Username cannot be blank.";
             }
@@ -176,13 +176,11 @@ public class UserServiceImpl implements UserService {
                 return "Contact number must be 10 digits.";
             }
 
-            // Check if user already exists
             Optional<UserEntity> existingUser = userRepo.findByUserName(userProxy.getUserName());
             if (existingUser.isPresent()) {
                 return "User with User Name already exists.";
             }
 
-            // Save image and build entity
             String imageUrl = saveImage(image);
 
             UserEntity newUser = new UserEntity();
@@ -204,40 +202,32 @@ public class UserServiceImpl implements UserService {
 
             return "Registration successful!";
         } catch (Exception e) {
-            // Log error (optional: use logger)
             e.printStackTrace();
             return "An error occurred during registration: " + e.getMessage();
         }
     }
 
 
-
-    private String saveImage(MultipartFile image) {
-        // Define the directory where images will be stored
+    public String saveImage(MultipartFile image) {
         String uploadDirectory = "C://springBoot/";
 
-        // Create the directory if it doesn't exist
         File dir = new File(uploadDirectory);
         if (!dir.exists()) {
             dir.mkdirs();
         }
 
-        // Generate a unique filename using UUID
         String uuid = UUID.randomUUID().toString();
         String fileName = uuid + "_" + image.getOriginalFilename();
 
-        // Define the path where the image will be saved
         Path path = Paths.get(uploadDirectory + fileName);
 
         try {
-            // Write the image to the directory
             Files.write(path, image.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
-            return null;  // Return null if there's an error saving the image
+            return null;
         }
 
-        // Return the relative URL for the image
         return "/uploads/images/" + fileName;
     }
 
@@ -268,7 +258,7 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             System.err.println("Exception occurred during login: " + e.getMessage());
             e.printStackTrace();
-            return null; // Or handle the exception as per your design (e.g., throw custom exception)
+            return null;
         }
     }
 
@@ -283,7 +273,7 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             System.err.println("Exception occurred while fetching users: " + e.getMessage());
             e.printStackTrace();
-            return Page.empty(); // Or return null / custom fallback as per your design
+            return Page.empty();
         }
     }
 
@@ -328,7 +318,7 @@ public String deleteUser(Long id) {
 
         user.setIsDeleted(true);
         System.out.println("if user is deleted : "+user.getIsDeleted());
-        user.setIsActive(false);
+//        user.setIsActive(false);
 
         return "User marked as deleted successfully!";
     } else {
@@ -354,11 +344,9 @@ public List<UserEntity> isDeleted(){
     }
 
 
-
-
-    public List<UserEntity> getActiveUsers() {
-        return userRepo.findByIsDeletedFalseAndIsActiveTrue();
-    }
+//    public List<UserEntity> getActiveUsers() {
+//        return userRepo.findByIsDeletedFalseAndIsActiveTrue();
+//    }
 
 
 
@@ -506,7 +494,7 @@ public List<UserEntity> isDeleted(){
             fakeUser.setAccessRole(roles[random.nextInt(roles.length)]);
 
             // Explicitly set these fields
-            fakeUser.setIsActive(true);
+//            fakeUser.setIsActive(true);
             fakeUser.setIsDeleted(false);
 
             userRepo.save(fakeUser);
@@ -574,10 +562,10 @@ public List<UserEntity> isDeleted(){
 
     }
 
-    public List<UserEntity> getIsDeletedFalseActicveTrue(){
-    List<UserEntity> nonDeletedAndActiveUsers= userRepo.findByIsDeletedFalseAndIsActiveTrue();
-    return  nonDeletedAndActiveUsers;
-    }
+//    public List<UserEntity> getIsDeletedFalseActicveTrue(){
+//    List<UserEntity> nonDeletedAndActiveUsers= userRepo.findByIsDeletedFalseAndIsActiveTrue();
+//    return  nonDeletedAndActiveUsers;
+//    }
 
     public void importUsersFromExcel(MultipartFile file) {
 
@@ -593,13 +581,11 @@ public List<UserEntity> isDeleted(){
 
                     UserEntity user = new UserEntity();
 
-                    // Name
                     String name = getStringCellValue(row.getCell(0));
                     if (name.isBlank() || name.length() < 2 || name.length() > 100)
                         throw new IllegalArgumentException("Invalid name at row " + i);
                     user.setName(name);
 
-                    // DOB
                     Cell dobCell = row.getCell(1);
                     Date dob;
                     if (dobCell == null)
@@ -613,13 +599,11 @@ public List<UserEntity> isDeleted(){
                     }
                     user.setDob(dob);
 
-                    // Username
                     String userName = getStringCellValue(row.getCell(2));
                     if (userName.isBlank() || userName.length() < 3 || userName.length() > 50)
                         throw new IllegalArgumentException("Invalid username at row " + i);
                     user.setUserName(userName);
 
-                    // Email
                     String email = getStringCellValue(row.getCell(3));
                     if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$"))
                         throw new IllegalArgumentException("Invalid email format at row " + i);
@@ -629,7 +613,6 @@ public List<UserEntity> isDeleted(){
                     }
                     user.setEmail(email);
 
-                    // Gender
                     String genderStr = getStringCellValue(row.getCell(4)).toUpperCase();
                     try {
                         user.setGender(Gender.valueOf(genderStr));
@@ -637,22 +620,18 @@ public List<UserEntity> isDeleted(){
                         throw new IllegalArgumentException("Invalid gender at row " + i);
                     }
 
-                    // Address
                     String address = getStringCellValue(row.getCell(5));
                     if (address.isBlank())
                         throw new IllegalArgumentException("Address is missing at row " + i);
                     user.setAddress(address);
 
-                    // Profile Image (optional)
                     user.setProfileImage(getStringOrNull(row.getCell(6)));
 
-                    // Contact Number
                     String contact = getStringCellValue(row.getCell(7));
                     if (!contact.matches("^\\d{10}$"))
                         throw new IllegalArgumentException("Invalid contact number at row " + i);
                     user.setContactNumber(contact);
 
-                    // Pincode
                     Cell pincodeCell = row.getCell(8);
                     int pincode;
                     if (pincodeCell.getCellType() == CellType.NUMERIC) {
@@ -664,7 +643,6 @@ public List<UserEntity> isDeleted(){
                         throw new IllegalArgumentException("Invalid pincode at row " + i);
                     user.setPincode(pincode);
 
-                    // Role
                     String roleStr = getStringCellValue(row.getCell(9)).toUpperCase();
                     try {
                         user.setAccessRole(Role.valueOf(roleStr));
@@ -672,13 +650,11 @@ public List<UserEntity> isDeleted(){
                         throw new IllegalArgumentException("Invalid role at row " + i);
                     }
 
-                    // Password
                     String rawPassword = getStringCellValue(row.getCell(10));
                     if (rawPassword.isBlank() || rawPassword.length() < 6)
                         throw new IllegalArgumentException("Invalid password at row " + i);
                     user.setPassword(passwordEncoder.encode(rawPassword));
 
-                    // Save to DB
                     userRepo.save(user);
                     System.out.println("User saved: " + user.getUserName());
 
@@ -726,10 +702,31 @@ public List<UserEntity> isDeleted(){
         String[] columns = {"Name", "DOB", "Username", "Email", "Gender", "Address", "ProfileImage",
                 "ContactNumber", "Pincode", "AccessRole", "Password"};
 
+        Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerFont.setFontHeightInPoints((short) 12);
+        headerFont.setColor(IndexedColors.WHITE.getIndex());
+
+        CellStyle headerCellStyle = workbook.createCellStyle();
+        headerCellStyle.setFont(headerFont);
+            headerCellStyle.setFillForegroundColor(IndexedColors.LIGHT_ORANGE.getIndex());
+        headerCellStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        headerCellStyle.setBorderBottom(BorderStyle.THICK);
+        headerCellStyle.setBorderTop(BorderStyle.THICK);
+        headerCellStyle.setBorderLeft(BorderStyle.THICK);
+        headerCellStyle.setBorderRight(BorderStyle.THICK);
+
+
         Row header = sheet.createRow(0);
+        header.setHeightInPoints(25); // Make header row taller
+
         for (int i = 0; i < columns.length; i++) {
             Cell cell = header.createCell(i);
             cell.setCellValue(columns[i]);
+            cell.setCellStyle(headerCellStyle);
+            sheet.autoSizeColumn(i);
+
         }
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

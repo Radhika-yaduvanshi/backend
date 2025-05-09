@@ -5,6 +5,7 @@ import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,7 +27,8 @@ public interface UserService {
 
     public byte[] getProfileImage(String imageName) throws IOException;
     public void generateFakeUsers(int count);
-    public List<UserEntity> searchUsers(String keyword);
+
+
     public boolean validateToken(String token);
     public void generateResetToken(String email);
     public void resetPassword(String token, String newPassword);
