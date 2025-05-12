@@ -10,6 +10,7 @@ import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
 import com.TodayTask.Admin.Panel.util.Helper;
 import com.TodayTask.Admin.Panel.util.downloadExcel;
+import org.apache.catalina.User;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -33,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -41,11 +44,11 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import java.util.Collections;
 
 @ExtendWith(MockitoExtension.class)//==>for mock data
 //@SpringBootTest ===>this is used when we are using @Autowire
 class UserServiceImplTest {
-    @Spy
     @InjectMocks
     UserServiceImpl userService;
     @Mock
@@ -70,117 +73,61 @@ class UserServiceImplTest {
     private UserProxy userProxy;
 
 
-
     @Mock
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Test
+    void testLogin() {
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        userService = new UserServiceImpl(); // or inject mocks
+        LoginRequest request = new LoginRequest("testuser", "testpass");
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken("testuser", "testpass", Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN")));
+
+        when(authmanager.authenticate(any())).thenReturn(authentication);
+        when(jwtService.genearteTocken("testuser")).thenReturn("dummy-token");
+
+        LoginResponse response = userService.login(request);
+        assertNotNull(response);
+        assertEquals("testuser", response.getUserName());
+        assertEquals("dummy-token", response.getToken());
+        assertEquals(List.of(new SimpleGrantedAuthority("ROLE_ADMIN")), response.getAccessRole());
     }
 
+
     @Test
-    void testRegisterUser_success() {
+    void testGetAllUsers() {
         // Arrange
-        UserProxy userProxy = new UserProxy();
-        userProxy.setUserName("testUser");
-        userProxy.setPassword("password123");
-        userProxy.setEmail("test@example.com");
-        userProxy.setContactNumber("1234567890");
-        userProxy.setGender(Gender.MALE);
-        userProxy.setName("Test User");
-        userProxy.setAddress("123 Test St");
-        userProxy.setDob(new Date());
-        userProxy.setPincode(123456);
-        userProxy.setAccessRole(Role.USER);
+        int page = 0;
+        int size = 2;
+        Pageable pageable = PageRequest.of(page, size);
 
-        // Create a mock image file
-        MultipartFile image = new MockMultipartFile("file", "test.jpg", "image/jpeg", "dummy".getBytes());
+        List<UserEntity> userEntities = List.of(
+                new UserEntity(1L, "radhika", new Date(), "radhika123", "radhika@example.com", Gender.FEMALE,
+                        "123 Street", "img1.jpg", "1234567890", 123456, Role.USER, "pass123", null, null, false),
+                new UserEntity(2L, "miska", new Date(), "bob321", "miska@example.com", Gender.MALE,
+                        "456 Avenue", "img2.jpg", "0987654321", 654321, Role.ADMIN, "pass321", null, null, false)
+        );
+        Page<UserEntity> userEntityPage = new PageImpl<>(userEntities, pageable, userEntities.size());
 
-        // Setup mocks
-        when(userRepo.findByUserName("testUser")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
-
-        // This will mimic saving the image
-        doReturn("http://dummy-image-url.com/image.jpg").when(userService).saveImage(any(MultipartFile.class));
-
-        // Mimic conversion returning the same entity
-        when(helper.convert(any(UserEntity.class), eq(UserEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Simulate saving user in DB
-        when(userRepo.save(any(UserEntity.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        String result = userService.registerUser(userProxy, image);
-
-        // Assert
-        assertEquals("Registration successful!", result);
-        verify(userRepo, times(1)).save(any(UserEntity.class));
-    }
-
-
-    @Test
-    public void login(){
-        LoginRequest req=new LoginRequest("username","password");
-        Authentication auth=new UsernamePasswordAuthenticationToken("username","password", List.of(new SimpleGrantedAuthority("ADMIN")));
-
-        when(authmanager.authenticate(any(Authentication.class))).thenReturn(auth);
-        when(jwtService.genearteTocken("username")).thenReturn("my-token");
-
-        LoginResponse loginResponse=userService.login(req);
-
-        assertNotNull(loginResponse);
-        assertEquals("username",loginResponse.getUserName());
-        assertEquals("my-token",loginResponse.getToken());
-        assertTrue(loginResponse.getAccessRole().contains(new SimpleGrantedAuthority("ADMIN")));
-    }
-
-    @Test
-    public void getAllUSers(){
-
-        int page=0;
-        int size=2;
-
-        UserEntity user1 = new UserEntity(
-                1L, "radhika", new Date(), "radhika123", "radhika@example.com", Gender.FEMALE, "123 Street",
-                null, "1234567890", 123456, Role.USER, "password123", null, null, false
+        List<UserProxy> userProxies = List.of(
+                new UserProxy(1L, "radhika", new Date(), "radhika123", "radhika@example.com", Gender.FEMALE,
+                        "123 Street", "img1.jpg", "1234567890", 123456, Role.USER, "pass123", null, null, null, false),
+                new UserProxy(2L, "miska", new Date(), "bob321", "miska@example.com", Gender.MALE,
+                        "456 Avenue", "img2.jpg", "0987654321", 654321, Role.ADMIN, "pass321", null, null, null, false)
         );
 
-        UserEntity user2 = new UserEntity(
-                2L, "priti", new Date(), "priti456", "priti@example.com", Gender.MALE, "456 Avenue",
-                null, "0987654321", 654321, Role.ADMIN, "password456", null, null, false
-        );
-
-        List<UserEntity>entities=List.of(user1,user2);
-        Page<UserEntity> mockPage = new PageImpl<>(entities, PageRequest.of(page, size), 2);
-
-        UserProxy proxy1 = new UserProxy(
-                1L, "radhika", user1.getDob(), "radhika123", "radhika@example.com", Gender.FEMALE,
-                "123 Street", "img1.jpg", "1234567890", 123456, Role.USER,
-                "password123", "token1", user1.getTokenExpiry(), true, false
-        );
-
-        UserProxy proxy2 = new UserProxy(
-                2L, "priti", user2.getDob(), "priti456", "priti@example.com", Gender.MALE,
-                "456 Avenue", "img2.jpg", "0987654321", 654321, Role.ADMIN,
-                "password456", "token2", user2.getTokenExpiry(), true, false
-        );
-        List<UserProxy> proxyList = List.of(proxy1, proxy2);
-
-        when(userRepo.findAll(PageRequest.of(page, size))).thenReturn(mockPage);
-        when(helper.convertList(entities, UserProxy.class)).thenReturn(proxyList);
+        when(userRepo.findAll(pageable)).thenReturn(userEntityPage);
+        when(helper.convertList(userEntities, UserProxy.class)).thenReturn(userProxies);
 
         Page<UserProxy> result = userService.getAllUsers(page, size);
 
         assertNotNull(result);
         assertEquals(2, result.getTotalElements());
         assertEquals("radhika", result.getContent().get(0).getName());
-        assertEquals("priti", result.getContent().get(1).getName());
-        assertEquals("password123", result.getContent().get(0).getPassword()); // Be careful with sensitive data
+        assertEquals("miska", result.getContent().get(1).getName());
+
+        verify(userRepo, times(1)).findAll(pageable);
+        verify(helper, times(1)).convertList(userEntities, UserProxy.class);
     }
 
 @Test
@@ -201,49 +148,123 @@ void generateToken(){
 
 }
 
+//get user by id
+@Test
+void testGetUserById_Success() {
+    // Arrange
+    Long userId = 1L;
+    UserEntity userEntity = new UserEntity(
+            userId, "Test User", new Date(), "testuser", "test@example.com", Gender.MALE,
+            "123 Test St", "profile.jpg", "1234567890", 123456, Role.USER,
+            "password", null, null, false
+    );
+
+    UserProxy userProxy = new UserProxy(
+            userId, "Test User", new Date(), "testuser", "test@example.com", Gender.MALE,
+            "123 Test St", "profile.jpg", "1234567890", 123456, Role.USER,
+            "password", null, null, null, false
+    );
+
+    when(userRepo.findById(userId)).thenReturn(java.util.Optional.of(userEntity));
+    when(helper.convert(userEntity, UserProxy.class)).thenReturn(userProxy);
+
+    UserProxy result = userService.getUserById(userId);
+
+    assertNotNull(result);
+    assertEquals("Test User", result.getName());
+    assertEquals("testuser", result.getUserName());
+    verify(userRepo, times(1)).findById(userId);
+    verify(helper, times(1)).convert(userEntity, UserProxy.class);
+}
+
+@Test
+public void testUserByName(){
+
+        String userName="Radhika";
+
+            UserEntity userEntity = new UserEntity(
+            1L, "Test User", new Date(), userName, "test@example.com", Gender.MALE,
+            "123 Test St", "profile.jpg", "1234567890", 123456, Role.USER,
+            "password", null, null, false
+    );
+
+    UserProxy userProxy = new UserProxy(
+            1L, "Test User", new Date(), userName, "test@example.com", Gender.MALE,
+            "123 Test St", "profile.jpg", "1234567890", 123456, Role.USER,
+            "password", null, null, null, false
+    );
+
+    when(userRepo.findByUserName(userName)).thenReturn(java.util.Optional.of(userEntity));
+    when((helper.convert(userEntity,UserProxy.class))).thenReturn(userProxy);
+
+    UserProxy result = userService.getuserByUserName(userName);
+    assertNotNull(result);
+    assertEquals(userName,result.getUserName());
+
+}
+
+@Test
+public void testDeleteUser(){
+
+        Long userId =1L;
+        UserEntity userEntity = new UserEntity();
+        userEntity.setId(userId);
+        userEntity.setUserName("Radhika");
+        userEntity.setEmail("radhikay628@gmail.com");
+
+        userEntity.setIsDeleted(true);
+        when(userRepo.findById(userId)).thenReturn(Optional.of(userEntity));
+        String result= userService.deleteUser(userId);
+
+        assertEquals("User marked as deleted successfully!",result);
+        assertTrue(userEntity.getIsDeleted());
+
+}
 
     @Test
-    public void downloadUsers() throws IOException {
-        // Setup the mock user data
-        UserEntity user1 = new UserEntity(
-                1L, "radhika", new Date(), "radhika123", "radhika@example.com", Gender.FEMALE,
-                "123 Street", null, "1234567890", 123456, Role.USER, "password123",
-                null, null, false
-        );
+    void testRegisterUser() {
+        UserProxy userProxy = new UserProxy(null, "radhika", new Date(90, 0, 1), "radhika", "radhika@example.com",
+                Gender.MALE, "123 Main St", "profile.jpg", "1234567890", 123456, Role.USER, "password123", null, null, true, false);
+        MockMultipartFile image = new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[0]);
 
-        UserEntity user2 = new UserEntity(
-                2L, "priti", new Date(), "priti456", "priti@example.com", Gender.MALE,
-                "456 Avenue", null, "0987654321", 654321, Role.ADMIN, "password456",
-                null, null, false
-        );
+        when(userRepo.findByUserName("radhika")).thenReturn(Optional.empty());//Optional.empty for check user not exist yet.
+        when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
+        when(helper.convert(any(UserEntity.class), eq(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        List<UserEntity> users = List.of(user1, user2);
+        String result = userService.registerUser(userProxy, image);
 
-        ByteArrayOutputStream dummyStream = new ByteArrayOutputStream();
-        dummyStream.write("Dummy Excel Content".getBytes());
+        assertEquals("Registration successful!", result);
+        verify(userRepo).save(any(UserEntity.class));
+    }
 
-        when(userRepo.findAll()).thenReturn(users);
-        when(downloadExcel.downloadUsersExcel(users)).thenReturn(dummyStream);
 
-        ByteArrayOutputStream result = userService.downloadUsers();
+    @Test
+    void testUpdateUser() {
+        // Arrange
+        Long userId = 1L;
+        UserEntity existingUser = new UserEntity();
+        existingUser.setId(userId);
+        existingUser.setUserName("old_name");
+        existingUser.setEmail("old@example.com");
 
-        assertNotNull(result);
-        assertEquals("Dummy Excel Content", result.toString());
-        verify(userRepo, times(1)).findAll();
-        verify(downloadExcel, times(1)).downloadUsersExcel(users);
+        UserProxy updatedProxy = new UserProxy();
+        updatedProxy.setUserName("new_name");
+        updatedProxy.setEmail("new@example.com");
+
+        when(userRepo.findById(userId)).thenReturn(Optional.of(existingUser));
+        when(userRepo.save(any(UserEntity.class))).thenAnswer(inv -> inv.getArgument(0));
+        String result = userService.updateUser(updatedProxy, userId);
+
+        assertEquals("User updated successfully.", result);
+        verify(userRepo).save(existingUser);
+        assertEquals("new_name", existingUser.getUserName());
+        assertEquals("new@example.com", existingUser.getEmail());
     }
 
 
 
-    //short cut->alt+inset
-    @AfterEach
-    void tearDown() {
-        System.out.println("tear down");
 
-    }
-
-
-    }
+}
 
 
 

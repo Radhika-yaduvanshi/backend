@@ -3,6 +3,7 @@ package com.TodayTask.Admin.Panel.controller;
 import com.TodayTask.Admin.Panel.Entity.LoginRequest;
 import com.TodayTask.Admin.Panel.Entity.LoginResponse;
 import com.TodayTask.Admin.Panel.Entity.UserEntity;
+import com.TodayTask.Admin.Panel.enums.Role;
 import com.TodayTask.Admin.Panel.proxy.ResetPasswordRequest;
 import com.TodayTask.Admin.Panel.proxy.UserProxy;
 import com.TodayTask.Admin.Panel.repository.UserRepo;
@@ -100,6 +101,18 @@ public class UserController {
         return "user found";
     }
 
+    @GetMapping("/getUserByRole")
+    public Page<UserProxy> getUsersByRole(
+            @RequestParam int page,
+            @RequestParam int size,
+            @RequestParam(required = false) Role role
+    ) {
+        return (role != null)
+                ? userService.findUserByRole(page, size, role)
+                : userService.getAllUsers(page, size);
+    }
+
+
     @PostMapping(value = "/register", consumes = {"multipart/form-data"})
     public String registerUser(
             @RequestParam("user") String userJson,        // Get it as a string
@@ -195,10 +208,11 @@ public class UserController {
 //    }
 @GetMapping("/getNonDeletedUsers")
 public Page<UserProxy> getNonDeletedUsers(
-        @RequestParam(value = "page", defaultValue = "0") int page,
-        @RequestParam(value = "size", defaultValue = "10") int size) {
+        @RequestParam( defaultValue = "0") int page,
+        @RequestParam( defaultValue = "10") int size) {
     return userService.getNonDeletedUsers(page, size);
 }
+
 
 
 

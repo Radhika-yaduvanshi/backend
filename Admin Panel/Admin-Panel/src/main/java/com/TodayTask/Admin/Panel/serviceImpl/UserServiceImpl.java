@@ -73,6 +73,7 @@ public class UserServiceImpl implements UserService {
     private JwtService jwtService;
 
 
+
     @Autowired
     private JavaMailSender mailSender;
 
@@ -198,13 +199,19 @@ public class UserServiceImpl implements UserService {
             newUser.setAccessRole(userProxy.getAccessRole());
 
             // Save user
-            userRepo.save(helper.convert(newUser, UserEntity.class));
+            UserEntity convertedUser = helper.convert(newUser,UserEntity.class);
+            saveUser(convertedUser);
+//            userRepo.save(helper.convert(newUser, UserEntity.class));
 
             return "Registration successful!";
         } catch (Exception e) {
             e.printStackTrace();
             return "An error occurred during registration: " + e.getMessage();
         }
+    }
+
+    public UserEntity saveUser(UserEntity user){
+        return userRepo.save(user);
     }
 
 
@@ -271,6 +278,20 @@ public class UserServiceImpl implements UserService {
 
             return new PageImpl<>(userProxyList, pageable, userPage.getTotalElements());
         } catch (Exception e) {
+            System.err.println("Exception occurred while fetching users: " + e.getMessage());
+            e.printStackTrace();
+            return Page.empty();
+        }
+    }
+
+    public Page<UserProxy> findUserByRole(int page ,int size,Role role){
+        try{
+            PageRequest pageRequest=PageRequest.of(page,size);
+            Page<UserEntity>userPage=userRepo.findByAccessRole(pageRequest,role);
+            List<UserProxy>userProxyList=helper.convertList(userPage.getContent(),UserProxy.class);
+            return  new PageImpl<>(userProxyList,pageRequest,userPage.getTotalElements());
+
+        }catch (Exception e){
             System.err.println("Exception occurred while fetching users: " + e.getMessage());
             e.printStackTrace();
             return Page.empty();
@@ -344,9 +365,17 @@ public List<UserEntity> isDeleted(){
     }
 
 
+
+
+
 //    public List<UserEntity> getActiveUsers() {
 //        return userRepo.findByIsDeletedFalseAndIsActiveTrue();
 //    }
+
+
+
+    //finduser by role
+
 
 
 
@@ -399,7 +428,8 @@ public List<UserEntity> isDeleted(){
             if (userProxy.getAccessRole() != null)
                 existingUser.setAccessRole(userProxy.getAccessRole());
 
-            userRepo.save(existingUser);
+//            userRepo.save(existingUser);
+            saveUser(existingUser);
             return "User updated successfully.";
         }
 
@@ -448,7 +478,8 @@ public List<UserEntity> isDeleted(){
         Files.write(filePath,file.getBytes());
         // Update database
         user.setProfileImage(fileName);
-        userRepo.save(user);
+//        userRepo.save(user);
+        saveUser(user);
 
         entityManager.flush();
         return  fileName;
@@ -497,7 +528,8 @@ public List<UserEntity> isDeleted(){
 //            fakeUser.setIsActive(true);
             fakeUser.setIsDeleted(false);
 
-            userRepo.save(fakeUser);
+//            userRepo.save(fakeUser);
+            saveUser(fakeUser);
         }
     }
 
